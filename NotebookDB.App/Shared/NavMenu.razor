@@ -1,0 +1,99 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+
+@inject NavigationManager Navigation
+@inject NotebookDB.App.Services.API API
+
+<div class="top-row ps-1 navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            @* SK<i class="fa-solid fa-NotebookDB"></i>LL DB *@
+            NOTEBOOK DB
+        </a>
+        <button title="Navigation menu" class="navbar-toggler float-end" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <AuthorizeView>
+            <Authorized>
+                @if(Notebooks.Any() == false)
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link ps-3" href="notebook" Match="NavLinkMatch.All">
+                            <i class="fa-solid fa-plus search-type me-1"></i> New Notebook
+                        </NavLink>
+                    </div>
+                }
+                @foreach (var type in Notebooks)
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link ps-3" href="@($"notebook/{type.Id}")" Match="NavLinkMatch.Prefix">
+                            <span class="oi oi-list-rich" aria-hidden="true"></span><i class="far fa-folder-open type-folder me-1"></i> @type.Name
+                        </NavLink>
+                    </div>
+                }
+                <div class="nav-item">
+                    <NavLink class="nav-link ps-3" href="account">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span><i class="fas fa-cog settings me-1"></i> @context.User.Identity.Name
+                    </NavLink>
+                </div>
+                <div class="nav-item">
+                    <NavLink class="nav-link ps-3" href="help">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span><i class="fa-regular fa-circle-question dashboard me-1"></i> Help
+                    </NavLink>
+                </div>
+
+                @if (context.User.IsInRole("Administrator"))
+                {
+                    <div class="nav-item">
+                        <NavLink class="nav-link ps-3" href="admin">
+                            <span class="oi oi-list-rich" aria-hidden="true"></span><i class="fa-solid fa-screwdriver-wrench admin me-1"></i> Admin
+                        </NavLink>
+                    </div>
+                }
+
+                <div class="nav-item">
+                    <NavLink class="nav-link ps-3 logout-link" href="logout">
+                        <span class="oi oi-list-rich" aria-hidden="true"></span><i class="fas fa-sign-out-alt logout me-1"></i> Log out
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    public List<Common.Folder> Notebooks { get; set; } = new List<Common.Folder>();
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var allowedTypes = await API.GetAsync<List<Common.Notebook>>($"api/v1/user/notebooks", false);
+        if(allowedTypes != null)
+            Notebooks = allowedTypes.Select(x => new Common.Folder() { Id = x.Id, Name = x.Name }).ToList();
+    }
+
+@*     
+    private async Task OnBeforeInternalNavigation(LocationChangingContext context)
+    {
+        var allowedTypes = await API.GetNotebooksByCurrentUser();
+        Notebooks = allowedTypes.Select(x => new Common.Folder() { Id = x.Id, Name = x.Name }).ToList();
+    } *@
+
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void BeginSignOut(MouseEventArgs args)
+    {
+        Navigation.NavigateTo("/logout");
+    }
+}

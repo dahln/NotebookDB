@@ -1,0 +1,402 @@
+﻿@attribute [Authorize]
+@page "/notebook/{NotebookId}/instance"
+@page "/notebook/{NotebookId}/instance/{InstanceId}"
+
+@using NotebookDB.Common
+
+@inject NotebookDB.App.Services.API API
+@inject IToastService _toastService
+@inject IModalService _modalService
+@inject SpinnerService _spinnerService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager _navigationManager
+
+<div class="mb-3 d-print-none">
+    <NavLink href="@($"notebook/{NotebookId}")">
+        &#171; Back to Search
+    </NavLink>
+</div>
+
+@if(Type != null)
+{
+    <h4>@Type?.Name</h4>
+    <hr />
+
+    <InstanceView NotebookId="@NotebookId" InstanceId="@InstanceId" Type="@Type" Instance="@Instance" PreviewView="true" Designer="false" />
+        
+    @if (Instance != null && Type.AllowAttachments && InstanceId != null)
+    {
+        <h4 class="mt-5">Files</h4>
+        <hr />
+        
+        @if (Instance.AllowEdits == true)
+        {
+            <div class="row">
+                <div id="upload" class="col-lg-2" style="display: block;">
+                    <label class="btn btn-info btn-sm">
+                        <InputFile OnChange="UploadFile" style="display:none;" placeholder="Select &amp Upload File" multiple /> Upload File
+                    </label>
+                </div>
+                <div id="uploading" style="display: none;">
+                    <div class="col-lg-12">
+                        <input type="button" value="Cancel Upload" class="btn btn-danger btn-sm" @onclick="CancelUploadFile" />
+                        <span id="progress-text" class="ms-2 mt-1"></span>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th width="200" style="min-width: 200px; width: 200px">Uploaded</th>
+                                <th>Name</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if(Instance.Files.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center">No Files</td>
+                            </tr>
+                        }
+                        @foreach (var file in Instance.Files.OrderByDescending(f => f.Uploaded))
+                        {
+                            <tr>
+                                <td>
+                                    <div class="dropdown">
+                                        <a class="btn btn-secondary-outline dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots"></i>
+                                        </a>
+
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <div class="dropdown-item pointer" @onclick="() => DownloadFile(file)">
+                                                    <i class="bi bi-download"></i> Download
+                                                </div>
+                                            </li>
+                                            @if(file.MimeType == "video/mp4")
+                                            {
+                                                <li>
+                                                    <div class="dropdown-item pointer" @onclick="() => SetVideoUrl(file)">
+                                                        <i class="bi bi-camera-video"></i> View
+                                                    </div>
+                                                </li>
+                                            }
+                                            @if(file.MimeType.Contains("image") || file.MimeType.Contains("pdf"))
+                                            {
+                                                <li>
+                                                    <div class="dropdown-item pointer" @onclick="() => ViewFile(file)">
+                                                        <i class="bi bi-eye"></i> View
+                                                    </div>
+                                                </li>
+                                            }
+                                            <li>
+                                                <div class="dropdown-item pointer" @onclick="() => DeleteFile(file)">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </div>
+                                            </li
+                                            <li>
+                                                <div class="dropdown-item pointer" @onclick="() => RenameFileClick(file)">
+                                                    <i class="bi bi-pencil-square"></i> Rename
+                                                </div>
+                                            </li>
+                                            
+                                        </ul>
+                                    </div>
+                                </td>
+                                <td class="pt-3">@file.Uploaded.ToLocalTime()</td>
+                                <td class="pt-3">@file.Name</td>
+                                <td class="pt-3">@file.FileSize.BytesToString()</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+        
+}
+
+
+
+
+@if (InstanceId != null && Instance != null)
+{
+    @if(Instance != null && Type.AllowAttachments == false)
+    {
+        <hr />
+    }
+    @if (Instance.CreatedOn != Instance.UpdatedOn)
+    {
+        <div class="row mt-5">
+            <div class="col-lg-12">
+                <span class="float-end"><strong>Update On: </strong>@Instance.UpdatedOn.ToLocalTime().ToString("g")</span>
+            </div>
+        </div>
+        <div class="row mt-1">
+            <div class="col-lg-12">
+                <span class="float-end"><strong>Update By: </strong>@(
+            string.IsNullOrEmpty(Instance.UpdatedByEmail) ? "Unknown" : Instance.UpdatedByEmail
+            )</span>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-lg-12">
+                <span class="float-end"><strong>Created On: </strong>@Instance.CreatedOn.ToLocalTime().ToString("g")</span>
+            </div>
+        </div>
+        <div class="row mt-1">
+            <div class="col-lg-12">
+                <span class="float-end"><strong>Created By: </strong>@(string.IsNullOrEmpty(Instance.CreatedByEmail) ? "Unknown" : Instance.CreatedByEmail)</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row mt-5">
+            <div class="col-lg-12">
+                <span class="float-end"><strong>Created On: </strong>@Instance.CreatedOn.ToLocalTime().ToString("g")</span>
+            </div>
+        </div>
+        <div class="row mt-1">
+            <div class="col-lg-12">
+                <span class="float-end"><strong>Created By: </strong>@(string.IsNullOrEmpty(Instance.CreatedByEmail) ? "Unknown" : Instance.CreatedByEmail)</span>
+            </div>
+        </div>
+    }
+}
+
+
+@code {
+    [Parameter]
+    public string NotebookId { get; set; }
+
+    [Parameter]
+    public string InstanceId { get; set; }
+
+    public Common.Notebook Type { get; set; }
+    public Common.Instance Instance { get; set; }
+
+    private int FilesCount { get; set; } = 0;
+    private int FilesTotal { get; set; } = 0;
+    private long MaxAllowedSize = 5_000_000_000;// 100 * 1024 * 1024; //100mb
+    private const int ChunkSize = 512000; // 500 KB (under the default limit)
+    private double ProgressValue = 0;
+    private NotebookDB.Common.File CurrentUpload { get; set; }
+    private bool UploadCancelled { get; set; } = false;
+    private int MaxFilesUpload { get; set; } = 10_000;
+
+    async protected override Task OnParametersSetAsync()
+    {
+        Type = await API.GetAsync<Common.Notebook>($"api/v1/notebook/{NotebookId}");
+        await GetInstance();
+    }
+
+    async private Task GetInstance()
+    {
+        if (InstanceId != null)
+        {
+            var result = await API.GetAsync<Common.Instance>($"api/v1/notebook/{NotebookId}/instance/{InstanceId}");
+            Instance = result;
+        }
+        else if (InstanceId == null)
+        {
+            Instance = new Common.Instance();
+            Instance.AllowEdits = Type.IsCurrentUserEditor;
+
+            foreach (var field in Type.Fields)
+            {
+                var newValue = new Common.InstanceValue()
+                {
+                    Field = field,
+                    FieldId = field.Id
+                };
+                if (!field.Required && field.Type == NotebookDB.Common.Enumerations.FieldType.Date)
+                    newValue.Value = DateTime.UtcNow.ToString();
+
+                Instance.Values.Add(newValue);
+            }
+        }
+    }
+
+    async private Task UploadFile(InputFileChangeEventArgs e)
+    {
+        await ResetProgressBar();
+        await ShowUploading();
+        FilesCount = 0;
+        FilesTotal = e.FileCount;
+        UploadCancelled = false;
+        foreach(var uploadedFile in e.GetMultipleFiles(MaxFilesUpload))
+        {
+            FilesCount++;
+
+            var format = uploadedFile.ContentType;
+
+            if (uploadedFile.Size > MaxAllowedSize)
+            {
+                _toastService.ShowError("Selected file is to big. Please choose file less than 100mb");
+                return;
+            }
+
+
+            NotebookDB.Common.File file = new NotebookDB.Common.File()
+            {
+                Name = uploadedFile.Name,
+                MimeType = format,
+                FileSize = uploadedFile.Size
+            };
+
+            CurrentUpload = await API.PostAsync<NotebookDB.Common.File>($"api/v1/notebook/{NotebookId}/instance/{InstanceId}/file", file, false);
+
+            string fileId = Guid.NewGuid().ToString();
+            int totalChunks = (int)Math.Ceiling((double)uploadedFile.Size / ChunkSize);
+            var buffer = new byte[ChunkSize];
+
+            using (var stream = uploadedFile.OpenReadStream(long.MaxValue)) // Allow reading the full file size
+            {
+                for (int i = 0; i < totalChunks; i++)
+                {
+                    if(UploadCancelled)
+                    {
+                        ProgressValue = 0;
+                        await API.DeleteAsync($"api/v1/notebook/{NotebookId}/instance/{InstanceId}/file/{CurrentUpload.Id}");
+                        _toastService.ShowSuccess("Upload Cancelled");
+                        return;
+                    }
+
+                    int bytesRead = await stream.ReadAsync(buffer, 0, ChunkSize);
+                    if (bytesRead == 0) break;
+
+                    var shard = new byte[bytesRead];
+                    Array.Copy(buffer, shard, bytesRead);
+
+                    var chunkDto = new NotebookDB.Common.FileShard()
+                    {
+                        Index = i,
+                        Data = shard
+                    };
+                    
+                    await API.PostAsync($"api/v1/notebook/{NotebookId}/instance/{InstanceId}/file/{CurrentUpload.Id}", chunkDto, false);
+
+                    ProgressValue = ((double)(i + 1) / totalChunks) * 100;
+                    await UpdateProgressBar();
+                }
+            }
+
+            _toastService.ShowSuccess($"{file.Name} Uploaded");
+            Instance.Files.Add(CurrentUpload);
+            ProgressValue = 0;
+        }
+        await ShowUpload();
+        await ResetProgressBar();
+    }
+
+    private async Task UpdateProgressBar()
+    {
+        await JSRuntime.InvokeVoidAsync("updateProgress", Math.Round(ProgressValue, 2), FilesCount, FilesTotal, CurrentUpload.Name);
+    }
+    private async Task ResetProgressBar()
+    {
+        await JSRuntime.InvokeVoidAsync("updateProgress",0,0,0, "");
+    }
+    private async Task ShowUpload()
+    {
+        await JSRuntime.InvokeVoidAsync("showUpload");
+    }
+    private async Task ShowUploading()
+    {
+        await JSRuntime.InvokeVoidAsync("showUploading");
+    }
+
+    async private Task ViewFile(NotebookDB.Common.File file)
+    {
+        var url = $"/api/v1/notebook/{NotebookId}/instance/{InstanceId}/file/{file.Id}/view";
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    private void DownloadFile(NotebookDB.Common.File file)
+    {
+        _navigationManager.NavigateTo($"api/v1/notebook/{NotebookId}/instance/{InstanceId}/file/{file.Id}/download", true);
+    }
+
+
+    async private Task DeleteFile(NotebookDB.Common.File file)
+    {
+        var modal = _modalService.Show<ConfirmDialog>("Are you sure you want to delete this file?");
+        var modalResult = await modal.Result;
+
+        if (modalResult.Cancelled) { }
+        else
+        {
+            await API.DeleteAsync($"api/v1/notebook/{NotebookId}/instance/{InstanceId}/file/{file.Id}", true);
+            Instance.Files.Remove(file);
+        }
+    }
+
+    private async Task CancelUploadFile()
+    {
+        UploadCancelled = true;
+        await ShowUpload();
+        await ResetProgressBar();
+    }
+
+    async public Task SetVideoUrl(NotebookDB.Common.File file)
+    {
+        var options = new ModalOptions() 
+        { 
+            Size = ModalSize.Large 
+        };
+
+        _spinnerService.Show();
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(ViewVideo.NotebookId), NotebookId);
+        parameters.Add(nameof(ViewVideo.InstanceId), InstanceId);
+        parameters.Add(nameof(ViewVideo.FileId), file.Id);
+
+
+        var modal = _modalService.Show<ViewVideo>(file.Name, parameters, options);
+        var modalResult = await modal.Result;
+
+        if (modalResult.Cancelled) { }
+        else
+        {
+        }
+    }
+
+
+
+
+
+
+
+
+    async public Task RenameFileClick(NotebookDB.Common.File file)
+    {
+        @* var options = new ModalOptions() 
+        { 
+            Size = ModalSize.Large 
+        };
+
+        var parameters = new ModalParameters();
+        parameters.Add(nameof(RenameFile.FolderId), Id);
+        parameters.Add(nameof(RenameFile.FileId), file.Id);
+        parameters.Add(nameof(RenameFile.Name), file.Name);
+
+        var modal = _modalService.Show<RenameFile>($"Rename {file.Name}", parameters, options);
+        var modalResult = await modal.Result;
+
+        if (modalResult.Cancelled) { }
+        else
+        {
+            SelectedFolder = await API.GetAsync<Common.Folder>($"api/v1/Folder/{Id}");
+        } *@
+    }
+
+}

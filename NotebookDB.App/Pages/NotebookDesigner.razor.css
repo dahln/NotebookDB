@@ -1,0 +1,22 @@
+.tinyh6 {
+    font-size: 7px;
+}
+
+.preview {
+    display: inline-block;
+}
+
+.section-header {
+    background-color: lightskyblue;
+}
+.section-label {
+    color:  lightskyblue;
+    font-weight: bold;
+}
+.field-header {
+    background-color: mediumslateblue;
+}
+.field-label {
+    color:  mediumslateblue;
+    font-weight: bold;
+}

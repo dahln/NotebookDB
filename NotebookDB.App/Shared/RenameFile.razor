@@ -1,0 +1,52 @@
+﻿@inject IJSRuntime JSRuntime
+@inject SpinnerService _spinnerService
+@inject NotebookDB.App.Services.API API
+
+<div class="row">
+    <div class="col-md-12">
+        <input type="text" @bind="Name" class="form-control" />
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <ul class="list-inline">
+            <li class="list-inline-item">
+                <input type="button" class="btn btn-primary dialog-btn" value="Rename" @onclick="Confirm" />
+            </li>
+            <li class="list-inline-item">
+                <input type="button" class="btn btn-outline-primary dialog-btn" value="Cancel" @onclick="Cancel" />
+            </li>
+        </ul>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string FolderId { get; set; }
+
+    [Parameter]
+    public string FileId { get; set; }
+
+    [Parameter]
+    public string Name { get; set; }
+
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+
+    async public Task Confirm()
+    {
+        Common.FileRename content = new Common.FileRename()
+        {
+            Name = Name
+        };
+        await API.PutAsync($"api/v1/folder/{FolderId}/file/{FileId}", content);
+
+        await BlazoredModal.CloseAsync(ModalResult.Ok(string.Empty));
+    }
+
+    public void Cancel()
+    {
+        BlazoredModal.CancelAsync();
+    }
+}

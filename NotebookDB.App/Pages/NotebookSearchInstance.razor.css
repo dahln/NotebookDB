@@ -1,0 +1,11 @@
+.pointer {
+    cursor: pointer;
+}
+
+.search-image {
+    max-width: 50px;
+}
+
+.search-text {
+    vertical-align: middle;
+}

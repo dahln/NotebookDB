@@ -1,0 +1,18 @@
+﻿@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        <div class="row mt-5">
+            <div class="col-md-12 text-center">
+                <h5>Select a notebook!</h5>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <Login></Login>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+
+}

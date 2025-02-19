@@ -1,0 +1,55 @@
+﻿@page "/help" 
+@inject IJSRuntime JS
+
+<div class="col-md-12">
+    <h2>Help - Under Construction - February 2025</h2>
+
+    <h3>Table of Contents</h3>
+    <ul>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("whatIsNotebookDB"))">What is NotebookDB</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("glossary"))">Glossary &amp; Terms</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("create"))">How to Create a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("customize"))">How to customize a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("upload"))">How to upload files to a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("addUser"))">How to add other users to a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("delete"))">How to delete a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("export"))">How to export a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("import"))">How to import a Notebook</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("billing"))">Billing</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("teamBilling"))">How to pay for Team Subscription</a></li>
+        <li><a class="pointer btn-link" @onclick="@(() => ScrollToSection("deleteAccount"))">How to delete my account</a></li>
+    </ul>
+
+    <h3 id="whatIsNotebookDB">What is NotebookDB</h3>
+    <p>
+        NotebookDB is a simple records management applicant. It enables you to create forms/pages that allow you to collect data, edit, and manage the data. You can change your forms/pages as needed when your data evolves. You can upload attachments for each record as well. 
+    </p>
+    <p>
+        Each notebook represent a different type of data. Individual notebooks have their own design and security. You can choose who has permission to read, edit, and manage a notebook.
+    </p>
+    <p></p>
+    
+    <h3 id="glossary">Glossary &amp; Terms</h3>
+    <ul>
+        <li><strong>Notebook: </strong>A set of data you want to manage. Examples: Customer, Order, Journal, Lab Result, Maintenance Record, Food Journal, Exercise Journal, Work Ticket, etc.</li>
+        <li><strong>Section: </strong>Each notebook is made of Sections and Fields. A section is an area on a notebook page. It contains fields. A section is how fields are organized.</li>
+        <li><strong>Field: </strong>Fields represent the different individual data points in a Notebook. They can be: Text, Text Area, Number, Decimal, Date, List, Label, Image, URL, or Money. These fields represent form fields.</li>
+    </ul>
+    <h3 id="create">How to Create a Notebook</h3>
+    <h3 id="customize">How to customize a Notebook</h3>
+    <h3 id="upload">How to upload files to a Notebook</h3>
+    <h3 id="addUser">How to add other users to a Notebook</h3>
+    <h3 id="delete">How to delete a Notebook</h3>
+    <h3 id="export">How to export a Notebook</h3>
+    <h3 id="import">How to import a Notebook</h3>
+    <h3 id="billing">Billing</h3>
+    <h3 id="teamBilling">How to pay for Team Subscription</h3>
+    <h3 id="deleteAccount">How to delete my account</h3>
+</div>
+
+@code {
+    private async Task ScrollToSection(string sectionId)
+    {
+        await JS.InvokeVoidAsync("scrollToId", sectionId);
+    }
+}

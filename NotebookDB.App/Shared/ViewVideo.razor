@@ -1,0 +1,35 @@
+﻿@inject IJSRuntime JSRuntime
+@inject SpinnerService _spinnerService
+
+<div class="row">
+    <div class="col-md-12">
+        <video id="videoPlayer" class="w-100" controls loop preload="metadata">
+            <source src="@VideoUrl" type="video/mp4" />
+        </video>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; }
+
+
+    [Parameter]
+    public string NotebookId { get; set; }
+    [Parameter]
+    public string InstanceId { get; set; }
+    [Parameter]
+    public string FileId { get; set; }
+
+    public string VideoUrl { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        VideoUrl = $"https://localhost:7267/api/v1/notebook/{NotebookId}/instance/{InstanceId}/streaming/{FileId}";
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeVideoPlayer", VideoUrl);
+        }
+        _spinnerService.Hide();
+    }
+
+}

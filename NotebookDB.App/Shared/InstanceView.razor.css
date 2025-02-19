@@ -1,0 +1,58 @@
+.required-astrisk {
+    color: red;
+    font-weight: bold;
+}
+
+label {
+    font-weight: 500;
+}
+
+pre {
+    display: block;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    overflow: auto;
+    font-size: .875em;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+}
+
+.instance-title {
+    font-size: x-large;
+}
+
+/* Ensures the table for each section has equal sized columns */
+table {
+    table-layout: fixed !important;
+}
+
+.table {
+    border: 0px transparent !important;
+}
+
+/* Reverts ALL previous CSS. Using this with the fieldset for the 'Design View' */
+.reset {
+    all: revert;
+}
+
+fieldset {
+    margin: 0px !important;
+}
+
+.section-label {
+    color:  lightskyblue;
+    font-weight: bold;
+}
+.field-label {
+    color:  mediumslateblue;
+    font-weight: bold;
+}
+.textarea-print {
+    border: 1px solid lightgray;
+    border-radius: 5px;
+    padding: 10px;
+}

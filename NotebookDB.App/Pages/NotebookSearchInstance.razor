@@ -1,0 +1,234 @@
+﻿@attribute [Authorize]
+@page "/notebook/{NotebookId}"
+
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject NavigationManager _navigationManger
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@using NotebookDB.Common
+@using NotebookDB.Common.Enumerations
+
+@inject NotebookDB.App.Services.API API
+
+<div class="row">
+    <div class="col-lg-6">
+        <h3>@Notebook?.Name
+            @if (Notebook != null && Notebook.IsCurrentUserAuthorizedAdmin)
+            {
+                <a class="ms-2" href="/notebook/@(NotebookId)/settings"><i class="fas fa-cog ms-2 d-print-none"></i></a>
+            }
+        </h3>
+    </div>
+    <div class="col-lg-6 d-print-none">
+        @if (NotebookId != null && Notebook?.IsCurrentUserEditor == true)
+        {
+            <NavLink class="btn btn-success btn-lg pointer float-end mb-2" href="@($"/notebook/{NotebookId}/instance")">
+                <i class="fas fa-plus mx-2"></i> Create New
+            </NavLink>
+        }
+    </div>
+</div>
+
+@if (NotebookId != null)
+{
+    <div class="row mt-2 d-print-none">
+        <div class="col-lg-12">
+            <form @onsubmit="(() => SearchType(0, false))" class="input-group">
+                <input type="text" class="form-control" aria-label="Text input with dropdown button" @bind="Search.FilterText" />
+                <button class="btn btn-outline-secondary" type="submit"><i class="fas fa-search me-2"></i>Search</button>
+            </form>
+        </div>
+    </div>
+    <div class="row d-print-none">
+        <div class="col-lg-12">
+            <div class="btn btn-link float-end pointer" @onclick="(() => SearchType(null, true))">Reset Search</div>
+        </div>
+    </div>
+}
+
+<div class="row mt-2 d-print-none">
+    <div class="col-lg-12">
+        <span class="float-end">@(string.IsNullOrEmpty(Search.FilterText) == false ? $"Searching \"{Search.FilterText}\"." : string.Empty) @(TotalFound != null ? $" Found {TotalFound} items" : string.Empty)</span>
+    </div>
+</div>
+@if (Instances.Count > 0)
+{
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="thead-dark">
+                <tr>
+                    @foreach (var column in Notebook?.Fields.Where(f => f.SearchShow == true).OrderBy(f => f.SearchOrder))
+                    {
+                        <th scope="col" @onclick="(() => Sort(column.Id))" class="pointer">
+                            <span class="me-2">
+                                @column.Name
+                                @if (Search.SortBy == column.Id)
+                                {
+                                    @if (Search.SortDirection == SortDirection.Ascending)
+                                    {
+                                        <i class="ms-2 fas fa-angle-down"></i>
+                                    }
+                                    else if (Search.SortDirection == SortDirection.Descending)
+                                    {
+                                        <i class="ms-2 fas fa-angle-up"></i>
+                                    }
+                                }
+                            </span>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var instance in Instances)
+                {
+                    <tr class="pointer" @onclick="(() => SelectInstance(instance.Id))">
+                        @foreach (var column in Notebook?.Fields.Where(f => f.SearchShow == true).OrderBy(f => f.SearchOrder))
+                        {
+                            @if (instance.Values.Where(v => v.Field.Id == column.Id).Count() > 0)
+                            {
+                                if (column.Type == FieldType.Date && !string.IsNullOrEmpty(instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value))
+                                {
+                                    <td class="search-text">
+                                        @(
+                                            new DateTime(long.Parse(instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value)).ToString("D")
+                                        )
+                                    </td>
+                                }
+                                else if(column.Type == FieldType.Image && !string.IsNullOrEmpty(instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value))
+                                {
+                                    <td>
+                                        <img src="@instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value" class="search-image" />
+                                    </td>
+                                }
+                                else if (column.Type == FieldType.Money && !string.IsNullOrEmpty(instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value))
+                                {
+                                    <td class="search-text">@Decimal.Parse(instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value).ToString("C")</td>
+                                }
+                                else
+                                {
+                                    <td class="search-text">@instance.Values.Where(v => v.Field.Id == column.Id).FirstOrDefault().Value</td>
+                                }
+                            }
+                            else
+                            {
+                                <td></td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <nav aria-label="Page navigation example">
+            <ul class="pagination float-end">
+                @if (TotalFound != null)
+                {
+                    @if ((Search.Page + 1) > 1)
+                    {
+                        <li class="page-item pointer"><div class="page-link" @onclick="(() => SearchType(Search.Page - 1, false))">Previous</div></li>
+                    }
+                    <li class="page-item"><div class="page-link">Page @(Search.Page + 1) of @(Math.Ceiling((double)TotalFound / PageSize))</div></li>
+                    @if ((Search.Page + 1) < (Math.Ceiling((double)TotalFound / PageSize)))
+                    {
+                        <li class="page-item pointer"><div class="page-link" @onclick="(() => SearchType(Search.Page + 1, false))">Next</div></li>
+                    }
+                }
+            </ul>
+        </nav>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public string NotebookId { get; set; }
+
+    int PageSize { get; set; } = 25;
+
+    //Loaded from API
+    Common.Notebook Notebook { get; set; } = new Common.Notebook();
+    List<Common.Instance> Instances = new List<Common.Instance>();
+    int? TotalFound { get; set; }
+
+    private Search Search { get; set; } = new Search();
+
+    private const string InstanceIdLabel = "InstanceId";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await GetNotebooks();
+    }
+
+
+    async private Task GetNotebooks()
+    {
+        Notebook = await API.GetAsync<Common.Notebook>($"api/v1/notebook/{NotebookId}");
+
+        string cachedNotebookId = await localStorage.GetItemAsync<string>("NotebookId");
+        if (NotebookId != null)
+        {
+            if (NotebookId == cachedNotebookId)
+            {
+                Search = await localStorage.GetItemAsync<Search>("Search");
+            }
+            await SearchType(null, false);
+        }
+        else
+        {
+            await SearchType(null, true);
+        }
+    }
+
+    async private Task TypeClick(ChangeEventArgs e)
+    {
+        NotebookId = e.Value.ToString();
+        await SearchType(null, true);
+    }
+
+
+    /// <summary>
+    /// null parameters means the existing search parameter will not be overwritten.
+    /// </summary>
+    /// <param name="page"></param>
+    /// <param name="sortBy"></param>
+    /// <param name="sortDirection"></param>
+    /// <param name="reset"></param>
+    /// <returns></returns>
+    async private Task SearchType(int? page, bool reset)
+    {
+        if (reset == true)
+        {
+            Search = new Search();
+            page = null;
+        }
+
+        Search = new Search()
+        {
+            FilterText = string.IsNullOrEmpty(Search?.FilterText) ? null : Search?.FilterText,
+            Page = page == null ? Search.Page : (int)page,
+            PageSize = PageSize,
+            SortBy = Search.SortBy,
+            SortDirection = Search.SortDirection
+        };
+
+        await localStorage.SetItemAsync("Search", Search);
+        await localStorage.SetItemAsync("NotebookId", NotebookId);
+
+        var response = await API.PostAsync<SearchResponse<Common.Instance>>($"api/v1/notebook/{NotebookId}/search", Search);
+        Instances = response.Results;
+        TotalFound = response.Total;
+    }
+
+    async private Task Sort(string column)
+    {
+        Search.SortBy = column;
+        Search.SortDirection = Search.SortDirection == SortDirection.Ascending ? SortDirection.Descending : SortDirection.Ascending;
+
+        await SearchType(Search.Page, false);
+    }
+
+    private void SelectInstance(string instanceId)
+    {
+        _navigationManger.NavigateTo($"notebook/{NotebookId}/instance/{instanceId}");
+    }
+}

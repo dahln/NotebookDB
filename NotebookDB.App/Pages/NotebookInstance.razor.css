@@ -1,0 +1,42 @@
+.required-astrisk {
+    color: red;
+    font-weight: bold;
+}
+
+label {
+    font-weight: 500;
+}
+
+pre {
+    display: block;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    overflow: auto;
+    font-size: .875em;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    white-space: -o-pre-wrap;
+    word-wrap: break-word;
+}
+
+.tab-content {
+    border-left: 1px solid #dee2e6 !important;
+    border-right: 1px solid #dee2e6 !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+/* File Menu Styles */
+.table-responsive {
+    overflow: visible;
+}
+.dropdown-menu {
+    z-index: 1050; /* Bootstrap default z-index for dropdowns */
+}
+.dropdown-toggle::after {
+    display: none; /* Hide the default arrow */
+}
+.pointer {
+    cursor: pointer;
+}

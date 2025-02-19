@@ -1,0 +1,182 @@
+﻿@attribute [Authorize]
+@page "/notebook"
+
+@using Microsoft.AspNetCore.Authorization
+@using NotebookDB.Common.Enumerations
+@using Newtonsoft.Json
+
+@inject NotebookDB.App.Services.API API
+@inject IToastService _toastService
+@inject IModalService _modalService
+@inject NavigationManager _navigationManager
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="row">
+            <h2>Create a New Notebook</h2>
+        </div>
+
+        <div class="row mt-5">
+            <h4>1) Select name for new notebook:</h4>
+        </div>
+
+        <div class="row mt-2">
+            <div class="col-md-3">
+                <input type="text" class="form-control" placeholder="Notebook Name" aria-label="New Form" aria-describedby="button-addon2" @bind="Type.Name" />
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <h4>2) Choose a creation method:</h4>
+        </div>
+
+        <div class="row mt-2">
+            <div class="col-md-3">
+                <select class="form-select" @bind="CreationOption">
+                    <option value="@Common.TemplateCreationOption.FromTemplate">Create From Template</option>
+                    <option value="@Common.TemplateCreationOption.ManualCreation">Manaul Creation</option>
+                    <option value="@Common.TemplateCreationOption.FromImport">From Import</option>
+                </select>
+            </div>
+        </div>
+        @if(CreationOption == Common.TemplateCreationOption.FromTemplate)
+        {
+            <div class="row mt-5">
+                <h4>3) Choose a Template:</h4>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <div class="row">
+
+                    @foreach(var template in Templates)
+                    {
+                        <div class="col-md-2">
+                            <div class="card">
+                                <h5 class="card-header text-center">@template.Name</h5>
+                                <div class="card-body">
+                                    <h1 class="card-title text-center"><i class="@template.Icon icon-template"></i></h1>
+                                    @if(Type.TemplateId == template.Id)
+                                    {
+                                        <h6 class="text-center">selected</h6>
+                                    }
+                                </div>
+                                <h5 class="card-footer">
+                                    <input type="button" class="btn btn-primary w-100" value="Select" @onclick="() => SelectTemplate(template)" />
+                                </h5>
+                            </div>
+                        </div>
+                    }
+                    </div>
+
+                </div>
+
+            </div>
+        }
+        else if(CreationOption == Common.TemplateCreationOption.ManualCreation)
+        {
+            <div class="row mt-5">
+                <h4>3) Create notebook manually:</h4>
+            </div>
+            <div class="row mt-2">
+                <p>Save and Continue. Then manually create the fields that best match your data.</p>
+            </div>
+        }
+        else if(CreationOption == Common.TemplateCreationOption.FromImport)
+        {
+            <div class="row mt-5">
+                <h4>3) Import a Notebook schema from a previous export:</h4>
+            </div>
+            <div class="row mt-2">
+                <p>Select and upload a schema file. After save, your notebook will be ready to use.</p>
+                <div class="col-md-3">
+                    <label class="btn btn-info">
+                        <InputFile OnChange="UploadSchema" style="display:none;" placeholder="Import" /> 
+                        <i class="fa-solid fa-file-import"></i>
+                        Import Data
+                    </label>
+                </div>
+            </div>
+            @if(string.IsNullOrEmpty(SelectedFileName) == false)
+            {
+                <div class="row mt-1">
+                    <span><strong>Selected File:</strong> @SelectedFileName</span>
+                </div>
+            }
+        }        
+
+        <div class="row">
+            <div class="col-md-12">
+                <hr />
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3">
+                <button class="btn btn-primary" type="button" id="button-addon2" @onclick="CreateNotebook">Create Notebook</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    //Creation Fields
+    public Common.CreateNotebook Type { get; set; } = new Common.CreateNotebook();
+
+    public List<Common.TemplateListItem> Templates { get; set; } = new List<Common.TemplateListItem>();
+    public Common.TemplateCreationOption CreationOption { get; set; } = Common.TemplateCreationOption.FromTemplate;
+    public string SelectedFileName { get; set; }
+
+    async protected override Task OnParametersSetAsync()
+    {
+        Templates = await API.GetAsync<List<Common.TemplateListItem>>("api/v1/template");
+    }
+
+    async private Task CreateNotebook()
+    {
+        if(CreationOption == Common.TemplateCreationOption.ManualCreation)
+        {
+            Type.TemplateId = null;
+            Type.Upload = null;
+        }
+        if(CreationOption == Common.TemplateCreationOption.FromTemplate)
+        {
+            Type.Upload = null;
+        }
+        if(CreationOption == Common.TemplateCreationOption.FromImport)
+        {
+            Type.TemplateId = null;
+        }
+
+        var result = await API.PostAsync<Common.Notebook>($"api/v1/notebook", Type);
+
+        _toastService.ShowSuccess("Notebook Created");
+        _navigationManager.NavigateTo($"notebook/{result.Id}/design", true);
+    }
+
+    private void SelectTemplate(Common.TemplateListItem selectedItem)
+    {
+        Type.TemplateId = selectedItem.Id;
+    }
+
+    async private Task UploadSchema(InputFileChangeEventArgs e)
+    {
+        var format = e.File.ContentType;
+        long maxAllowedSize = 33_554_432;
+
+        if (e.File.Size > maxAllowedSize)
+        {
+            _toastService.ShowError("Selected file is to big. Please choose file less than 32mb");
+            return;
+        }
+
+        using var stream = e.File.OpenReadStream(e.File.Size);
+        using var reader = new StreamReader(stream);
+
+        var jsonData = await reader.ReadToEndAsync();
+        Type.Upload = JsonConvert.DeserializeObject<NotebookDB.Common.Notebook>(jsonData);
+
+        SelectedFileName = e.File.Name;
+    }
+
+}

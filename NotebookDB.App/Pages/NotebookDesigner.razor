@@ -1,0 +1,509 @@
+﻿@attribute [Authorize]
+@page "/notebook/{TypeId}/design"
+
+@using NotebookDB.Common.Enumerations
+
+@inject NotebookDB.App.Services.API API
+@inject IToastService _toastService
+@inject IModalService _modalService
+
+<div class="mb-3">
+    <NavLink href="@($"notebook/{TypeId}/settings")">
+        &#171; Back to Settings
+    </NavLink>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-12">
+
+        <div class="card">
+            <div class="card-header">
+                <h5>@Notebook.Name Designer</h5>
+            </div>
+            <div class="card-body">
+                <input type="button" class="btn btn-success ms-2" value="Publish Changes" @onclick="SaveNotebookDesign" />
+                <input type="button" class="btn btn-success ms-2" value="Undo All Changes" @onclick="LoadAll" />
+                <div class="form-check form-switch preview ms-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @bind="PreviewView">
+                    <label class="form-check-label" for="flexSwitchCheckDefault">Design/Preview</label>
+                </div>
+                
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-lg-3">
+        <div class="accordion" id="accordionExample">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingNewSection">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNewSection" aria-expanded="true" aria-controls="collapseNewSection">
+                        Create New Section
+                    </button>
+                </h2>
+                <div id="collapseNewSection" class="accordion-collapse collapse" aria-labelledby="headingNewSection"  data-bs-parent="#accordionExample">
+                    <div class="accordion-body">
+                    
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <h6 class="tinyh6">Name</h6>
+                                <input type="text" class="form-control" @bind="NewSection.Name" />
+                            </div>
+                        </div>
+
+                        <div class="row mt-1">
+                            <div class="col-lg-4">
+                                <h6 class="tinyh6">Columns</h6>
+                                <input type="number" class="form-control" @bind="NewSection.Columns" min="1" max="4" />
+                            </div>
+                        </div>
+
+                        <div class="row mt-1">
+                            <div class="col-lg-12">
+                                <input type="button" class="btn btn-success float-end" value="Create New Section" @onclick="CreateSection" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingNewField">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNewField" aria-expanded="true" aria-controls="collapseNewField">
+                        Create New Field
+                    </button>
+                </h2>
+                <div id="collapseNewField" class="accordion-collapse collapse" aria-labelledby="headingNewField"  data-bs-parent="#accordionExample">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <h6 class="tinyh6">Name</h6>
+                                <input type="text" class="form-control" @bind="NewField.Name" />
+                            </div>
+                        </div>
+
+                        <div class="row mt-1">
+                            <h6 class="tinyh6">Section</h6>
+                            <div class="col-lg-12">
+                                <select class="form-select" @bind="NewField.SectionId">
+                                    <option value="0">--- Section ---</option>
+                                    @foreach(var section in Notebook.Sections)
+                                    {
+                                        <option value="@(section.Id)">@(section.Name)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mt-1">
+                            <h6 class="tinyh6">Type</h6>
+                            <div class="col-lg-12">
+                                <select class="form-select" @bind="NewField.Type">
+                                    <option value="@FieldType.Text">Text</option>
+                                    <option value="@FieldType.TextArea">Text Area</option>
+                                    <option value="@FieldType.Number">Number</option>
+                                    <option value="@FieldType.Decimal">Decimal</option>
+                                    <option value="@FieldType.Date">Date</option>
+                                    <option value="@FieldType.List">List</option>
+                                    <option value="@FieldType.Label">Label</option>
+                                    <option value="@FieldType.Image">Image</option>
+                                    <option value="@FieldType.URL">URL</option>
+                                    <option value="@FieldType.Money">Money</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mt-1">
+                            <div class="col-lg-4">
+                                <h6 class="tinyh6">Column</h6>
+                                <input type="number" class="form-control" @bind="NewField.Column" min="1" max="4" />
+                            </div>
+                        </div>
+
+                        @if (NewField.Type == FieldType.List || NewField.Type == FieldType.TextArea)
+                        {
+                            <div class="row mt-1">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Options/Content</h6>
+                                    <input type="text" class="form-control" placeholder="@(NewField.Type == FieldType.List ? "Comma separated list: option 1, option 2, option 3" : NewField.Type == FieldType.TextArea ? "Number of rows: 42" : NewField.Type == FieldType.Label ? "Label/Text Content" : string.Empty)" @bind="NewField.Options" />
+                                </div>
+                            </div>
+                        }
+
+                        @if (NewField.Type == FieldType.Label)
+                        {
+                            <div class="row mt-1">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Label or Instructions:</h6>
+                                    <textarea rows="7" class="form-control" placeholder="Label or Any instructions you wish to give the user" @bind="NewField.Options"></textarea>
+                                </div>
+                            </div>
+                        }
+
+                        @if (NewField.Type != FieldType.Label)
+                        {
+                            <div class="row mt-1">
+                                <div class="col-lg-5">
+                                    <h6 class="tinyh6">Show in Search</h6>
+                                    <input type="checkbox" @bind="NewField.SearchShow" min="1" />
+                                </div>
+                                @if (NewField.SearchShow == true)
+                                {
+                                    <div class="col-lg-7">
+                                        <h6 class="tinyh6">Search Column Order</h6>
+                                        <input type="number" class="form-control" @bind="NewField.SearchOrder" />
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="row mt-1">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Required</h6>
+                                    <input type="checkbox" @bind="NewField.Required" />
+                                </div>
+                            </div>
+                        }
+                        <div class="row mt-1">
+                            <div class="col-lg-12">
+                                <input type="button" class="btn btn-success float-end" value="Create New Field" @onclick="CreateField" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @foreach(var section in Notebook.Sections.OrderBy(x => x.Id))
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading@(section.Id)">
+                        <button class="accordion-button section-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse@(section.Id)" aria-expanded="true" aria-controls="collapse@(section.Id)">
+                            <strong class="me-1">Section -</strong>@(section.Name)
+                        </button>
+                    </h2>
+                    <div id="collapse@(section.Id)" class="accordion-collapse collapse" aria-labelledby="heading@(section.Id)" data-bs-parent="#accordionExample">
+                        <div class="accordion-body">
+
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Name</h6>
+                                    <input type="text" class="form-control" @bind="section.Name" />
+                                </div>
+                            </div>
+
+                            <div class="row mt-1">
+                                <div class="col-lg-4">
+                                    <h6 class="tinyh6">Columns</h6>
+                                    <input type="number" class="form-control" @bind="section.Columns" min="1" max="4" />
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Order</h6>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" @bind="section.Order" readonly />
+                                        <button disabled="@((section.Order-1 >= 1) == false)" class="btn btn-primary" type="button" @onclick="(() => UpdateSectionOrderUp(section))">Up</button>
+                                        <button disabled="@((section.Order+1 <= Notebook.Fields.Count()) == false)" class="btn btn-success" type="button" @onclick="(() => UpdateSectionOrderDown(section))">Down</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            @foreach (var field in Notebook.Fields.OrderBy(x => x.Id))
+            {
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading@(field.Id)">
+                        <button class="accordion-button field-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse@(field.Id)" aria-expanded="true" aria-controls="collapse@(field.Id)">
+                            <strong class="me-1">Field -</strong>@field.Name
+                        </button>
+                    </h2>
+                    <div id="collapse@(field.Id)" class="accordion-collapse collapse" aria-labelledby="heading@(field.Id)" data-bs-parent="#accordionExample">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Name</h6>
+                                    <input type="text" class="form-control" @bind="field.Name" @onblur="(() => UpdateField())" />
+                                </div>
+                            </div>
+
+                            <div class="row mt-1">
+                                <h6 class="tinyh6">Section</h6>
+                                <div class="col-lg-12">
+                                    <select class="form-select" @bind="field.SectionId">
+                                        @foreach(var section in Notebook.Sections)
+                                        {
+                                            <option value="@(section.Id)">@(section.Name)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <h6 class="tinyh6">Order</h6>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" @bind="field.Order" readonly />
+                                        <button disabled="@((field.Order-1 >= 1) == false)" class="btn btn-primary" type="button" @onclick="(() => UpdateFieldOrderUp(field))" >Up</button>
+                                        <button disabled="@((field.Order+1 <= Notebook.Fields.Count(x => x.SectionId == field.SectionId && x.Column == field.Column)) == false)" class="btn btn-success" type="button" @onclick="(() => UpdateFieldOrderDown(field))">Down</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-1">
+                                <h6 class="tinyh6">Type</h6>
+                                <div class="col-lg-12">
+                                    <select class="form-select" @bind="field.Type" @onblur="(() => UpdateField())" disabled>
+                                        <option value="@FieldType.Text">Text</option>
+                                        <option value="@FieldType.TextArea">Text Area</option>
+                                        <option value="@FieldType.Number">Number</option>
+                                        <option value="@FieldType.Decimal">Decimal</option>
+                                        <option value="@FieldType.Date">Date</option>
+                                        <option value="@FieldType.List">List</option>
+                                        <option value="@FieldType.Label">Label</option>
+                                        <option value="@FieldType.Image">Image</option>
+                                        <option value="@FieldType.URL">URL</option>
+                                        <option value="@FieldType.Money">Money</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row mt-1">
+                                <div class="col-lg-4">
+                                    <h6 class="tinyh6">Column</h6>
+                                    <input type="number" class="form-control" @bind="field.Column" min="1" max="4" @onblur="(() => UpdateField())" />
+                                </div>
+                            </div>
+
+                            @if (field.Type == FieldType.List || field.Type == FieldType.TextArea)
+                            {
+                                <div class="row mt-1">
+                                    <div class="col-lg-12">
+                                        <h6 class="tinyh6">Options/Content</h6>
+                                        <input type="text" class="form-control" placeholder="@(field.Type == FieldType.List ? "Comma separated list: option 1, option 2, option 3" : field.Type == FieldType.TextArea ? "Number of rows: 42" : field.Type == FieldType.Label ? "Label/Text Content" : string.Empty)" @bind="field.Options" @onblur="(() => UpdateField())" />
+                                    </div>
+                                </div>
+                            }
+
+                            @if (field.Type == FieldType.Label)
+                            {
+                                <div class="row mt-1">
+                                    <div class="col-lg-12">
+                                        <h6 class="tinyh6">Label or Instructions:</h6>
+                                        <textarea rows="7" class="form-control" placeholder="Label or Any instructions you wish to give the user" @bind="field.Options" @onblur="(() => UpdateField())"></textarea>
+                                    </div>
+                                </div>
+                            }
+    
+                            @if (field.Type != FieldType.Label)
+                            {
+                                <div class="row mt-1">
+                                    <div class="col-lg-5">
+                                        <h6 class="tinyh6">Show in Search</h6>
+                                        <input type="checkbox" @bind="field.SearchShow" min="1" @onblur="(() => UpdateField())" />
+                                    </div>
+                                    @if (field.SearchShow == true)
+                                    {
+                                        <div class="col-lg-7">
+                                            <h6 class="tinyh6">Search Column Order</h6>
+                                            <input type="number" class="form-control" @bind="field.SearchOrder" @onblur="(() => UpdateField())" />
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="row mt-1">
+                                    <div class="col-lg-12">
+                                        <h6 class="tinyh6">Required</h6>
+                                        <input type="checkbox" @bind="field.Required" @onblur="(() => UpdateField())" />
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="row mt-1">
+                                <div class="col-lg-12">
+                                    <button class="form-control btn btn-danger" @onclick="(() => DeleteField(field))" @onblur="(() => UpdateField())">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-9">
+        <InstanceView NotebookId="@TypeId" InstanceId="null" Type="@Notebook" Instance="@PreviewInstance" PreviewView="@PreviewView" Designer="true" />
+    </div>
+</div>
+
+
+
+
+
+
+
+@code {
+    [Parameter]
+    public string TypeId { get; set; }
+
+    public Common.Notebook Notebook { get; set; } = new Common.Notebook();
+    public Common.Field NewField { get; set; } = new Common.Field();
+    public Common.Section NewSection { get; set; } = new Common.Section();
+
+    public Common.Instance PreviewInstance { get; set; } = new Common.Instance();
+    public bool PreviewView { get; set; } = false;
+
+    async protected override Task OnParametersSetAsync()
+    {
+        await LoadAll();
+    }
+
+    async private Task LoadAll()
+    {
+        Notebook = await API.GetAsync<Common.Notebook>($"api/v1/notebook/{TypeId}");
+        LoadInstance();
+    }
+
+    private void CreateField()
+    {
+        if (string.IsNullOrEmpty(NewField.Name))
+        {
+            _toastService.ShowError("Field Name is required");
+            return;
+        }
+        if(NewField.Type == 0)
+        {
+            _toastService.ShowError("Type is required");
+            return;
+        }
+        if(string.IsNullOrEmpty(NewField.SectionId))
+        {
+            _toastService.ShowError("Section is required");
+            return;
+        }
+        NewField.NotebookId = TypeId;
+
+        var maxOrder = Notebook.Fields.Where(x => x.SectionId == NewField.SectionId && x.Column == NewField.Column).Select(x => x.Order).DefaultIfEmpty(0).Max();
+        NewField.Order = maxOrder + 1;
+
+        Notebook.Fields.Add(NewField);
+        LoadInstance();
+
+        NewField = new Common.Field();
+    }
+
+    private void CreateSection()
+    {
+        if (string.IsNullOrEmpty(NewSection.Name))
+        {
+            _toastService.ShowError("Section Name is required");
+            return;
+        }
+
+        var maxOrder = Notebook.Sections.Select(x => x.Order).DefaultIfEmpty(0).Max();
+        NewSection.Order = maxOrder + 1;
+
+        Notebook.Sections.Add(NewSection);
+        LoadInstance();
+
+        NewSection = new Common.Section();
+    }
+
+    private void UpdateField()
+    {
+        LoadInstance();
+    }
+
+    private void UpdateFieldOrderUp(Common.Field field)
+    {
+        if(field.Order-1 >= 1)
+        {
+            foreach(var temp in Notebook.Fields.Where(x => x.Id != field.Id && x.SectionId == field.SectionId && x.Order == field.Order-1))
+            {
+                temp.Order++;
+            }
+            field.Order--;
+            LoadInstance();
+        }
+    }
+
+    private void UpdateFieldOrderDown(Common.Field field)
+    {
+        if(field.Order+1 <= Notebook.Fields.Count(x => x.SectionId == field.SectionId && x.Column == field.Column))
+        {
+            foreach(var temp in Notebook.Fields.Where(x => x.Id != field.Id && x.SectionId == field.SectionId && x.Order == field.Order+1))
+            {
+                temp.Order--;
+            }
+            field.Order++;
+            LoadInstance();
+        }
+    }
+
+    private void UpdateSectionOrderUp(Common.Section section)
+    {
+        if (section.Order - 1 >= 1)
+        {
+            foreach (var temp in Notebook.Sections.Where(x => x.Id != section.Id && x.Order == section.Order - 1))
+            {
+                temp.Order++;
+            }
+            section.Order--;
+            LoadInstance();
+        }
+    }
+
+    private void UpdateSectionOrderDown(Common.Section section)
+    {
+        if (section.Order + 1 <= Notebook.Sections.Count())
+        {
+            foreach (var temp in Notebook.Sections.Where(x => x.Id != section.Id && x.Order == section.Order + 1))
+            {
+                temp.Order--;
+            }
+            section.Order++;
+            LoadInstance();
+        }
+    }
+
+    private void DeleteField(Common.Field field)
+    {
+        Notebook.Fields = Notebook.Fields.Where(x => x.Id != field.Id).ToList();
+    }
+
+    async private Task SaveNotebookDesign()
+    {
+        var success = await API.PutAsync($"api/v1/notebook/{TypeId}/fields", Notebook);
+        if(success)
+            _toastService.ShowSuccess("Changes Saved");
+    }
+
+    private void LoadInstance()
+    {
+        PreviewInstance = new Common.Instance();
+        foreach (var tempField in Notebook.Fields)
+        {
+            var newValue = new Common.InstanceValue()
+                {
+                    Field = tempField
+                };
+            if (!tempField.Required && tempField.Type == NotebookDB.Common.Enumerations.FieldType.Date)
+                newValue.Value = DateTime.UtcNow.ToString();
+
+            PreviewInstance.Values.Add(newValue);
+        }
+    }
+
+    private void TogglePreviewView()
+    {
+        PreviewView = false;   
+    }
+    private void ToggleUserView()
+    {
+        PreviewView = true;   
+    }
+
+}
