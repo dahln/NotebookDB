@@ -1142,7 +1142,7 @@ namespace CRM.Server.Controllers
 
             if (!string.IsNullOrEmpty(model.FilterText))
             {
-                query = query.Where(i => i.Values.Any(v => v.Value.Contains(model.FilterText)));
+                query = query.Where(i => i.Values.Any(v => (v.Field.Type != NotebookDB.Common.Enumerations.FieldType.Image && v.Field.Type != NotebookDB.Common.Enumerations.FieldType.Label) && v.Value.ToLower().Contains(model.FilterText.ToLower())));
             }
 
             SearchResponse<NotebookDB.Common.Instance> response = new SearchResponse<NotebookDB.Common.Instance>();
